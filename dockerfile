@@ -1,5 +1,3 @@
-ENV PORT=9000 \
-    UPTIME_KUMA_PORT=9000
 ARG BASE_IMAGE=louislam/uptime-kuma:base2
 
 ############################################
@@ -15,7 +13,8 @@ FROM louislam/uptime-kuma:builder-go AS build_healthcheck
 FROM louislam/uptime-kuma:base2 AS build
 USER node
 WORKDIR /app
-
+ENV PORT=9000
+ENV UPTIME_KUMA_PORT=9000
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=1
 COPY --chown=node:node .npmrc .npmrc
 COPY --chown=node:node package.json package.json
