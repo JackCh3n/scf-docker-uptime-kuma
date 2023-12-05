@@ -39,6 +39,7 @@ WORKDIR "$APP_HOME"
 COPY sources.list /etc/apt/
 RUN apt-get update && apt-get -y install iputils-ping wget
 RUN apt-get clean autoclean;apt-get autoremove --yes;rm -rf /var/lib/{apt,dpkg,cache,log}/
+RUN mkdir -p $DATA_DIR
 RUN ls -s /mnt/ $DATA_DIR
 COPY --from=builder "$APP_HOME" "$APP_HOME"
 EXPOSE 9000
