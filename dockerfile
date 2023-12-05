@@ -38,9 +38,9 @@ WORKDIR "$APP_HOME"
 
 COPY sources.list /etc/apt/
 RUN apt-get update && apt-get -y install iputils-ping wget
-RUN apt-get clean autoclean;apt-get autoremove --yes;rm -rf /var/lib/{apt,dpkg,cache,log}/
-RUN mkdir -p $DATA_DIR
-RUN ls -s /mnt/ $DATA_DIR
+RUN apt-get clean autoclean;apt-get autoremove --yes;rm -rf /var/lib/{apt,dpkg,cache,log}
+# RUN mkdir -p $DATA_DIR
+RUN ls -s /mnt/ $APP_HOME
 COPY --from=builder "$APP_HOME" "$APP_HOME"
 EXPOSE 9000
 CMD /bin/bash -xc 'env ; pwd ; ls -la ; cd uptime-kuma; ../gen-config.sh ;exec /usr/bin/timeout -k 15s $OOM_TIMEOUT node server/server.js --host=0.0.0.0 --port=9000;'
