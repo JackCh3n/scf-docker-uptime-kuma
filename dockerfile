@@ -1,28 +1,43 @@
-ARG BASE_IMAGE=louislam/uptime-kuma:base2
-############################################
-# ⭐ Main Image
-############################################
-FROM $BASE_IMAGE AS release
-## Install Git
-RUN apt update \
-    && apt --yes --no-install-recommends install curl \
-    && curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
-    && chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
-    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
-    && apt update \
-    && apt --yes --no-install-recommends  install git
+FROM node as builder
+ARG UPTIME_KUMA_VERSION=1.21.0
+ARG LITESTREAM_VERSION=0.3.9
 
-#LABEL org.opencontainers.image.source="https://github.com/louislam/uptime-kuma"
+ENV APP_HOME /app
+ENV UPTIME_KUMA_VERSION $UPTIME_KUMA_VERSION
+ENV LITESTREAM_VERSION $LITESTREAM_VERSION
+ENV DATA_DIR "${APP_HOME}/fs/"
 
-ENV UPTIME_KUMA_IS_CONTAINER=1
+RUN env ; mkdir -p "$APP_HOME"
+WORKDIR "$APP_HOME"
 
-# Copy app files from build layer
-COPY --chown=node:node . /app
-WORKDIR /app
-RUN npm run setup
+RUN apt-get update && apt-get -y install iputils-ping wget
+RUN rm -rf "$APP_HOME"/uptime-kuma* && wget -qO uptime-kuma-$UPTIME_KUMA_VERSION.tar.gz https://github.com/louislam/uptime-kuma/archive/refs/tags/$UPTIME_KUMA_VERSION.tar.gz && tar xzf uptime-kuma-$UPTIME_KUMA_VERSION.tar.gz
+RUN rm -rf "$APP_HOME"/litestream* && wget -q https://github.com/benbjohnson/litestream/releases/download/v$LITESTREAM_VERSION/litestream-v$LITESTREAM_VERSION-linux-amd64-static.tar.gz && tar xzf litestream-v$LITESTREAM_VERSION-linux-amd64-static.tar.gz
 
-USER node
-HEALTHCHECK --interval=60s --timeout=30s --start-period=180s --retries=5 CMD extra/healthcheck
-ENTRYPOINT ["/usr/bin/dumb-init", "--"]
+RUN mkdir -p "$APP_HOME/fs"
+RUN cd uptime-kuma-$UPTIME_KUMA_VERSION && npm ci --production && npm run download-dist
 
-CMD ["node", "server/server.js", "--host=0.0.0.0", "--port=9000"]
+RUN rm -rf "$DATA_DIR" && mkdir -p "$DATA_DIR"
+RUN ls -la && mv uptime-kuma-$UPTIME_KUMA_VERSION uptime-kuma
+
+FROM node
+
+RUN apt-get update && apt-get -y install iputils-ping wget
+
+ENV APP_HOME /app
+ENV LITESTREAM_BUCKET uptime-kuma
+ENV LITESTREAM_PATH uptime-kuma-db
+
+#ADD gen-config.sh "$APP_HOME/gen-config.sh"
+
+ENV DATA_DIR "${APP_HOME}/fs/"
+ENV OOM_TIMEOUT "15m"
+
+WORKDIR "$APP_HOME"
+
+RUN apt-get update && apt-get -y install iputils-ping wget
+RUN apt-get clean autoclean;apt-get autoremove --yes;rm -rf /var/lib/{apt,dpkg,cache,log}/
+
+COPY --from=builder "$APP_HOME" "$APP_HOME"
+EXPOSE 9000
+CMD /bin/bash -xc 'env ; pwd ; ls -la ; cd uptime-kuma; ../gen-config.sh ;exec /usr/bin/timeout -k 15s $OOM_TIMEOUT node server/server.js --host=0.0.0.0 --port=9000;'
