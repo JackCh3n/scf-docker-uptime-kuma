@@ -1,48 +1,28 @@
 ARG BASE_IMAGE=louislam/uptime-kuma:base2
-
-############################################
-# Build in Golang
-# Run npm run build-healthcheck-armv7 in the host first, otherwise it will be super slow where it is building the armv7 healthcheck
-# Check file: builder-go.dockerfile
-############################################
-FROM louislam/uptime-kuma:builder-go AS build_healthcheck
-
-############################################
-# Build in Node.js
-############################################
-FROM louislam/uptime-kuma:base2 AS build
-USER node
-WORKDIR /app
-
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=1
-RUN ls
-RUN pwd
-COPY --chown=node:node .npmrc .npmrc
-COPY --chown=node:node package.json package.json
-COPY --chown=node:node package-lock.json package-lock.json
-RUN npm ci --omit=dev
-COPY . .
-COPY --chown=node:node --from=build_healthcheck /app/extra/healthcheck /app/extra/healthcheck
-RUN mkdir ./data
-
 ############################################
 # ⭐ Main Image
 ############################################
 FROM $BASE_IMAGE AS release
-USER node
-WORKDIR /app
+## Install Git
+RUN apt update \
+    && apt --yes --no-install-recommends install curl \
+    && curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
+    && chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
+    && apt update \
+    && apt --yes --no-install-recommends  install git
 
-LABEL org.opencontainers.image.source="https://github.com/louislam/uptime-kuma"
+#LABEL org.opencontainers.image.source="https://github.com/louislam/uptime-kuma"
 
 ENV UPTIME_KUMA_IS_CONTAINER=1
-ENV UPTIME_KUMA_PORT=9000
-ENV UPTIME_KUMA_HOST=0.0.0.0
 
 # Copy app files from build layer
-COPY --chown=node:node --from=build /app /app
+COPY --chown=node:node . /app
+WORKDIR /app
+RUN npm run setup
 
-EXPOSE 3001
-EXPOSE 9000
+USER node
 HEALTHCHECK --interval=60s --timeout=30s --start-period=180s --retries=5 CMD extra/healthcheck
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
-CMD ["node", "server/server.js"]
+
+CMD ["node", "server/server.js", "--host=0.0.0.0", "--port=9000"]
