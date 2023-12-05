@@ -9,7 +9,7 @@ ENV DATA_DIR "${APP_HOME}/fs/"
 
 RUN env ; mkdir -p "$APP_HOME"
 WORKDIR "$APP_HOME"
-
+COPY sources.list /etc/apt/
 RUN apt-get update && apt-get -y install iputils-ping wget
 RUN rm -rf "$APP_HOME"/uptime-kuma* && wget -qO uptime-kuma-$UPTIME_KUMA_VERSION.tar.gz https://github.com/louislam/uptime-kuma/archive/refs/tags/$UPTIME_KUMA_VERSION.tar.gz && tar xzf uptime-kuma-$UPTIME_KUMA_VERSION.tar.gz
 RUN rm -rf "$APP_HOME"/litestream* && wget -q https://github.com/benbjohnson/litestream/releases/download/v$LITESTREAM_VERSION/litestream-v$LITESTREAM_VERSION-linux-amd64-static.tar.gz && tar xzf litestream-v$LITESTREAM_VERSION-linux-amd64-static.tar.gz
@@ -22,6 +22,7 @@ RUN ls -la && mv uptime-kuma-$UPTIME_KUMA_VERSION uptime-kuma
 
 FROM node
 
+COPY sources.list /etc/apt/
 RUN apt-get update && apt-get -y install iputils-ping wget
 
 ENV APP_HOME /app
@@ -35,6 +36,7 @@ ENV OOM_TIMEOUT "15m"
 
 WORKDIR "$APP_HOME"
 
+COPY sources.list /etc/apt/
 RUN apt-get update && apt-get -y install iputils-ping wget
 RUN apt-get clean autoclean;apt-get autoremove --yes;rm -rf /var/lib/{apt,dpkg,cache,log}/
 
