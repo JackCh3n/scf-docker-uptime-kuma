@@ -16,7 +16,7 @@ RUN rm -rf "$APP_HOME"/litestream* && wget -q https://github.com/benbjohnson/lit
 
 RUN mkdir -p "$APP_HOME/fs"
 RUN cd uptime-kuma-$UPTIME_KUMA_VERSION && npm ci --production
-
+COPY /dist uptime-kuma-$UPTIME_KUMA_VERSION/dist
 RUN rm -rf "$DATA_DIR" && mkdir -p "$DATA_DIR"
 RUN ls -la && mv uptime-kuma-$UPTIME_KUMA_VERSION uptime-kuma
 
