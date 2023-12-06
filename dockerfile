@@ -12,7 +12,7 @@ WORKDIR "$APP_HOME"
 COPY sources.list /etc/apt/
 RUN apt-get update && apt-get -y install iputils-ping wget
 RUN rm -rf "$APP_HOME"/uptime-kuma* && wget -qO uptime-kuma-$UPTIME_KUMA_VERSION.tar.gz https://github.com/louislam/uptime-kuma/archive/refs/tags/$UPTIME_KUMA_VERSION.tar.gz && tar xzf uptime-kuma-$UPTIME_KUMA_VERSION.tar.gz
-RUN rm -rf "$APP_HOME"/litestream* && wget -q https://github.com/benbjohnson/litestream/releases/download/v$LITESTREAM_VERSION/litestream-v$LITESTREAM_VERSION-linux-amd64-static.tar.gz && tar xzf litestream-v$LITESTREAM_VERSION-linux-amd64-static.tar.gz
+# RUN rm -rf "$APP_HOME"/litestream* && wget -q https://github.com/benbjohnson/litestream/releases/download/v$LITESTREAM_VERSION/litestream-v$LITESTREAM_VERSION-linux-amd64-static.tar.gz && tar xzf litestream-v$LITESTREAM_VERSION-linux-amd64-static.tar.gz
 
 RUN mkdir -p "$APP_HOME/fs"
 RUN cd uptime-kuma-$UPTIME_KUMA_VERSION && npm ci --production
@@ -39,8 +39,6 @@ WORKDIR "$APP_HOME"
 COPY sources.list /etc/apt/
 RUN apt-get update && apt-get -y install iputils-ping wget
 RUN apt-get clean autoclean;apt-get autoremove --yes;rm -rf /var/lib/{apt,dpkg,cache,log}
-# RUN mkdir -p $DATA_DIR
-# RUN ln -s /mnt/ $APP_HOME
 COPY --from=builder "$APP_HOME" "$APP_HOME"
 EXPOSE 9000
-CMD /bin/bash -xc 'env ; pwd ; ls -la ; cd uptime-kuma; ../gen-config.sh ;exec /usr/bin/timeout -k 15s $OOM_TIMEOUT node server/server.js --host=0.0.0.0 --port=9000;'
+CMD /bin/bash -xc 'env ; pwd ; ls -la ; cd uptime-kuma;exec /usr/bin/timeout -k 15s $OOM_TIMEOUT node server/server.js --host=0.0.0.0 --port=9000;'
